@@ -88,6 +88,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    setUser, // Expose setUser to allow updating user data after profile updates
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -18,6 +18,13 @@ const updateUserName = async (request, response) => {
         message: "User does not exist .Pls provide me a correct username"
       })
     }
+    const checkExistingUsername = await User.find({ userName: newusername })
+    if (checkExistingUsername.length > 0) {
+      return response.status(409).json({
+        success: false,
+        message: "User with given username already exists . Pls provide a different username"
+      })
+    }
     const updateUser = await User.updateOne({ userName: oldusername }, { $set: { userName: newusername } })
     if (!updateUser) {
       return response.status(400).json({
@@ -54,6 +61,15 @@ const updateEmail = async (request, response) => {
       return response.status(404).json({
         success: false,
         message: " User does not exist . Pls provide  the correct username"
+      })
+    }
+    const checkExistingEmail = await User.find({
+      email: newEmail
+    })
+    if (checkExistingEmail.length > 0) {
+      return response.status(409).json({
+        success: false,
+        message: "User with given email already exists . Pls provide a different email"
       })
     }
     const updateEmail = await User.updateOne({ userName: username }, { $set: { email: newEmail } });
@@ -101,7 +117,7 @@ const updateUserPassword = async (request, response) => {
     if (!checkOldPassword) {
       return response.status(403).json({
         success: false,
-        message: "Given password does not match with the password given"
+        message: "You are not entering the correct old password . Pls check the old password"
       })
     }
     const salt = await bcrypt.genSalt(10);
@@ -110,7 +126,7 @@ const updateUserPassword = async (request, response) => {
     const findUpdatedUser = await User.findOne({ userName: username })
     if (updatePassword) {
       return response.status(200).json({
-        success: false,
+        success: true,
         message: "Password is updated successfully",
         updatedUser: findUpdatedUser
       })
@@ -132,4 +148,4 @@ const updateUserPassword = async (request, response) => {
 }
 
 
-export { updateUserName, updateEmail , updateUserPassword }
+export { updateUserName, updateEmail, updateUserPassword }
