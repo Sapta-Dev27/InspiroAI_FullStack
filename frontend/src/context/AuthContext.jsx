@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../lib/api.js';
 
 const AuthContext = createContext();
 
@@ -22,43 +23,59 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email && password) {
-          const mockUser = {
-            id: '1',
-            name: 'John Doe',
-            email: email,
-          };
-          setUser(mockUser);
-          localStorage.setItem('inspiroai_user', JSON.stringify(mockUser));
-          resolve(mockUser);
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 1000);
-    });
-  };
+  const login = async (email, userpassword) => {
+    try {
+      const response = await api.post('/auth/login', {
+        useremail: email,
+        password: userpassword
+      })
+      const { data, accessToken, refreshToken } = response.data;
 
-  const register = (name, email, password) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (name && email && password) {
-          const mockUser = {
-            id: '1',
-            name: name,
-            email: email,
-          };
-          setUser(mockUser);
-          localStorage.setItem('inspiroai_user', JSON.stringify(mockUser));
-          resolve(mockUser);
-        } else {
-          reject(new Error('Registration failed'));
-        }
-      }, 1000);
-    });
-  };
+      const userData = {
+        id: data._id,
+        name: data.userName,
+        email: data.email,
+      }
+      setUser(userData);
+
+      localStorage.setItem('inspiroai_user', JSON.stringify(userData));
+      localStorage.setItem('inspiroai_access_token', accessToken);
+      localStorage.setItem('inspiroai_refresh_token', refreshToken);
+
+      return userData;
+    }
+    catch (error) {
+      throw new Error(error.response?.data?.message || 'Login failed');
+    }
+  }
+
+  const register = async (name, email, password) => {
+    try {
+      const response = await api.post('/auth/register', {
+        username: name,
+        useremail: email,
+        userpassword: password
+      })
+      const { data, accessToken, refreshToken } = response.data;
+
+      const userData = {
+        id: data._id,
+        name: data.userName,
+        email: data.email,
+      }
+
+      setUser(userData);
+
+      localStorage.setItem('inspiroai_user', JSON.stringify(userData));
+      localStorage.setItem('inspiroai_access_token', accessToken);
+      localStorage.setItem('inspiroai_refresh_token', refreshToken);
+
+      return userData;
+    }
+    catch (error) {
+      throw new Error(error.response?.data?.message || 'Registration failed');
+    }
+  }
 
   const logout = () => {
     setUser(null);
