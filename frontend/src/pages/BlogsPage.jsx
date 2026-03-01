@@ -1,44 +1,112 @@
-import { useState } from 'react';
-import { Plus, Trash2, Eye } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Eye, X, Copy, Download } from 'lucide-react';
+import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import jsPDF from 'jspdf';
+
 import DashboardLayout from '../components/layout/DashboardLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
-import Textarea from '../components/ui/Textarea';
+import api from '../lib/api.js';
 
 const BlogsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedBlog, setSelectedBlog] = useState(null);
+
   const [formData, setFormData] = useState({
     title: '',
     category: '',
-    description: '',
+    tags: '',
+    tone: '',
+    length: '',
   });
 
-  const [blogs, setBlogs] = useState([
-    {
-      id: 1,
-      title: 'Getting Started with Machine Learning',
-      category: 'Technology',
-      date: '2024-01-15',
-      excerpt: 'Learn the basics of machine learning and how to get started...',
-    },
-    {
-      id: 2,
-      title: 'Best Practices for Remote Work',
-      category: 'Productivity',
-      date: '2024-01-14',
-      excerpt: 'Discover effective strategies for working remotely...',
-    },
-    {
-      id: 3,
-      title: 'Healthy Eating on a Budget',
-      category: 'Lifestyle',
-      date: '2024-01-13',
-      excerpt: 'Tips and tricks for eating healthy without breaking the bank...',
-    },
-  ]);
+  const [blogs, setBlogs] = useState([]);
+  const [generatedBlog, setGeneratedBlog] = useState(null);
+
+  const blogRef = useRef(null);
+
+  // FETCH USER BLOGS
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const response = await api.get('/blog/user');
+        setBlogs(response.data.blogs);
+      } catch {
+        alert("Error fetching blogs");
+      }
+    };
+    fetchBlogs();
+  }, []);
+
+  // AUTO SCROLL TO GENERATED BLOG
+  useEffect(() => {
+    if (generatedBlog && blogRef.current) {
+      blogRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [generatedBlog]);
+
+  // GENERATE BLOG
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await api.post('/blog/create', {
+        title: formData.title,
+        category: formData.category,
+        tags: formData.tags
+          ? formData.tags.split(',').map(tag => tag.trim())
+          : [],
+        tone: formData.tone,
+        length: formData.length,
+      });
+
+      const newBlog = response.data.newBlog;
+
+      setBlogs(prev => [newBlog, ...prev]);
+      setGeneratedBlog(newBlog);
+
+      setFormData({
+        title: "",
+        category: "",
+        tags: "",
+        tone: "",
+        length: "",
+      });
+
+      setShowForm(false);
+
+    } catch {
+      alert("Failed to create blog");
+    }
+
+    setLoading(false);
+  };
+
+  // DELETE
+  const handleDelete = async (blogId) => {
+    try {
+      await api.delete(`/blog/delete/${blogId}`);
+      setBlogs(prev => prev.filter(blog => blog._id !== blogId));
+    } catch {
+      alert("Delete failed");
+    }
+  };
+
+  // DOWNLOAD PDF
+  const handleDownloadPDF = (blog) => {
+    const doc = new jsPDF();
+    const text = doc.splitTextToSize(blog.blogContent, 180);
+    doc.text(text, 10, 10);
+    doc.save(`${blog.blogTitle}.pdf`);
+  };
+
+  const getWordCount = (text) =>
+    text ? text.trim().split(/\s+/).length : 0;
 
   const categoryOptions = [
     { value: 'technology', label: 'Technology' },
@@ -48,135 +116,153 @@ const BlogsPage = () => {
     { value: 'finance', label: 'Finance' },
   ];
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const toneOptions = [
+    { value: 'informative', label: 'Informative' },
+    { value: 'casual', label: 'Casual' },
+    { value: 'professional', label: 'Professional' },
+    { value: 'persuasive', label: 'Persuasive' },
+  ];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    setTimeout(() => {
-      const newBlog = {
-        id: blogs.length + 1,
-        title: formData.title,
-        category: formData.category,
-        date: new Date().toISOString().split('T')[0],
-        excerpt: formData.description,
-      };
-      setBlogs([newBlog, ...blogs]);
-      setFormData({
-        title: '',
-        category: '',
-        description: '',
-      });
-      setShowForm(false);
-      setLoading(false);
-    }, 2000);
-  };
-
-  const handleDelete = (id) => {
-    setBlogs(blogs.filter((blog) => blog.id !== id));
-  };
+  const lengthOptions = [
+    { value: '500', label: '500 words' },
+    { value: '1000', label: '1000 words' },
+    { value: '1500', label: '1500 words' },
+    { value: '2000', label: '2000 words' },
+  ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
+
+        {/* HEADER */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Blogs</h1>
-            <p className="text-gray-600 mt-1">Generate and manage your AI blog posts</p>
-          </div>
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus size={20} className="mr-2" />
+          <h1 className="text-3xl font-bold">Explore Blogs</h1>
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 w-64 flex justify-center"
+            onClick={() => setShowForm(!showForm)}
+          >
+            <Plus size={20} className="m-1 mr-2" />
             Generate Blog
           </Button>
         </div>
 
+        {/* FORM */}
         {showForm && (
           <Card>
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Generate New Blog Post</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
+
               <Input
                 label="Title"
-                name="title"
                 value={formData.title}
-                onChange={handleChange}
-                placeholder="Enter blog title"
+                onChange={(e) =>
+                  setFormData(prev => ({ ...prev, title: e.target.value }))
+                }
                 required
               />
 
               <Select
                 label="Category"
-                name="category"
                 value={formData.category}
-                onChange={handleChange}
+                onChange={(e) =>
+                  setFormData(prev => ({ ...prev, category: e.target.value }))
+                }
                 options={categoryOptions}
-                required
               />
 
-              <Textarea
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                placeholder="Brief description of the blog post"
-                rows={4}
+              <Select
+                label="Tone"
+                value={formData.tone}
+                onChange={(e) =>
+                  setFormData(prev => ({ ...prev, tone: e.target.value }))
+                }
+                options={toneOptions}
               />
 
-              <div className="flex gap-4">
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Generating...' : 'Generate Blog'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowForm(false)}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Select
+                label="Length"
+                value={formData.length}
+                onChange={(e) =>
+                  setFormData(prev => ({ ...prev, length: e.target.value }))
+                }
+                options={lengthOptions}
+              />
+
+              <Button type="submit" disabled={loading}>
+                {loading ? "Generating..." : "Generate Blog"}
+              </Button>
             </form>
           </Card>
         )}
 
+        {/* GENERATED PREVIEW SECTION */}
+        {generatedBlog && (
+          <motion.div
+            ref={blogRef}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">
+                  {generatedBlog.blogTitle}
+                </h2>
+
+                <div className="flex gap-2">
+                  <Button size="sm"
+                    onClick={() =>
+                      navigator.clipboard.writeText(generatedBlog.blogContent)
+                    }>
+                    <Copy size={16} />
+                  </Button>
+
+                  <Button size="sm"
+                    onClick={() => handleDownloadPDF(generatedBlog)}>
+                    <Download size={16} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="prose max-w-none whitespace-pre-wrap">
+                <ReactMarkdown>
+                  {generatedBlog.blogContent}
+                </ReactMarkdown>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* BLOG LIST */}
         <Card>
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Your Blog Posts</h2>
+          <h2 className="text-xl font-bold mb-6">Your Blogs</h2>
+
           <div className="space-y-4">
             {blogs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500">No blog posts yet. Generate your first blog!</p>
+                <p className="text-gray-500 text-sm">
+                  No blogs yet. Generate your first blog 🚀
+                </p>
               </div>
             ) : (
               blogs.map((blog) => (
                 <div
-                  key={blog.id}
-                  className="flex items-start justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  key={blog._id}
+                  className="flex justify-between p-4 bg-gray-50 rounded-lg"
                 >
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">{blog.title}</h3>
-                    <p className="text-sm text-gray-600 mb-3">{blog.excerpt}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                        {blog.category}
-                      </span>
-                      <span>{blog.date}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button size="sm" variant="ghost">
-                      <Eye size={16} />
-                    </Button>
+                  <span>{blog.blogTitle}</span>
+
+                  <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(blog.id)}
+                      onClick={() => setSelectedBlog(blog)}
                     >
-                      <Trash2 size={16} className="text-red-600" />
+                      <Eye size={16} />
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      onClick={() => handleDelete(blog._id)}
+                    >
+                      <Trash2 size={16} />
                     </Button>
                   </div>
                 </div>
@@ -184,6 +270,52 @@ const BlogsPage = () => {
             )}
           </div>
         </Card>
+
+        {/* POPUP MODAL */}
+        {selectedBlog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-6 relative">
+
+              <button
+                onClick={() => setSelectedBlog(null)}
+                className="absolute top-4 right-4">
+                <X size={20} />
+              </button>
+
+              <h2 className="text-2xl font-bold mb-2">
+                {selectedBlog.blogTitle}
+              </h2>
+
+              <div className="flex gap-4 text-sm mb-4">
+                <span>{selectedBlog.blogCateogory}</span>
+                <span>{getWordCount(selectedBlog.blogContent)} words</span>
+              </div>
+
+              <div className="flex gap-3 mb-4">
+                <Button size="sm"
+                  onClick={() =>
+                    navigator.clipboard.writeText(selectedBlog.blogContent)
+                  }>
+                  <Copy size={16} className="mr-2" />
+                  Copy
+                </Button>
+
+                <Button size="sm"
+                  onClick={() => handleDownloadPDF(selectedBlog)}>
+                  Download PDF
+                </Button>
+              </div>
+
+              <div className="prose max-w-none whitespace-pre-wrap">
+                <ReactMarkdown>
+                  {selectedBlog.blogContent}
+                </ReactMarkdown>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </DashboardLayout>
   );

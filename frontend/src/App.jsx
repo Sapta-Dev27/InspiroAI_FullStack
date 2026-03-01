@@ -58,14 +58,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/thumbnail-generator"
-            element={
-              <ProtectedRoute>
-                <ThumbnailGeneratorPage />
-              </ProtectedRoute>
-            }
-          />
+         
           <Route
             path="/profile"
             element={

@@ -1,126 +1,121 @@
-import { FileText, BookOpen, Image, Layers } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import Card from '../components/ui/Card';
+import { useEffect, useState } from "react";
+import { FileText, BookOpen, Image, Layers } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import Card from "../components/ui/Card";
+import api from "../lib/api";
 
 const Dashboard = () => {
   const { user } = useAuth();
 
-  const stats = [
+  const [stats, setStats] = useState(null);
+  const [recentArticles, setRecentArticles] = useState([]);
+  const [recentBlogs, setRecentBlogs] = useState([]);
+  const [recentImages, setRecentImages] = useState([]);
+  const [recentThumbnails, setRecentThumbnails] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+
+        const [
+          statsRes,
+          articlesRes,
+          blogsRes,
+          imagesRes,
+          thumbnailsRes,
+        ] = await Promise.all([
+          api.get("/dashboard/stats"),
+          api.get("/dashboard/recentArticles"),
+          api.get("/dashboard/recentBlogs"),
+          api.get("/dashboard/recentImages"),
+          api.get("/dashboard/recentThumbnails"),
+        ]);
+
+        setStats(statsRes.data.data);
+        setRecentArticles(articlesRes.data.data);
+        setRecentBlogs(blogsRes.data.data);
+        setRecentImages(imagesRes.data.data);
+        setRecentThumbnails(thumbnailsRes.data.data);
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-20 text-gray-500">
+          Loading dashboard...
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const statsData = [
     {
       icon: FileText,
-      label: 'Total Articles',
-      value: '24',
-      color: 'bg-blue-100 text-blue-600',
+      label: "Total Articles",
+      value: stats?.noOfArticles || 0,
+      color: "bg-blue-100 text-blue-600",
     },
     {
       icon: BookOpen,
-      label: 'Total Blogs',
-      value: '18',
-      color: 'bg-green-100 text-green-600',
+      label: "Total Blogs",
+      value: stats?.noOfBlogs || 0,
+      color: "bg-green-100 text-green-600",
     },
     {
       icon: Image,
-      label: 'Total Images',
-      value: '56',
-      color: 'bg-purple-100 text-purple-600',
+      label: "Total Images",
+      value: stats?.noOfImages || 0,
+      color: "bg-purple-100 text-purple-600",
     },
     {
       icon: Layers,
-      label: 'Total Thumbnails',
-      value: '32',
-      color: 'bg-orange-100 text-orange-600',
-    },
-  ];
-
-  const recentArticles = [
-    {
-      id: 1,
-      title: 'The Future of AI in Content Creation',
-      category: 'Technology',
-      date: '2024-01-15',
-    },
-    {
-      id: 2,
-      title: 'Top 10 Marketing Strategies for 2024',
-      category: 'Marketing',
-      date: '2024-01-14',
-    },
-    {
-      id: 3,
-      title: 'How to Build a Successful SaaS Product',
-      category: 'Business',
-      date: '2024-01-13',
-    },
-  ];
-
-  const recentBlogs = [
-    {
-      id: 1,
-      title: 'Getting Started with Machine Learning',
-      category: 'Technology',
-      date: '2024-01-15',
-    },
-    {
-      id: 2,
-      title: 'Best Practices for Remote Work',
-      category: 'Productivity',
-      date: '2024-01-14',
-    },
-  ];
-
-  const recentImages = [
-    {
-      id: 1,
-      url: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=300',
-      prompt: 'Futuristic cityscape at sunset',
-    },
-    {
-      id: 2,
-      url: 'https://images.pexels.com/photos/1287145/pexels-photo-1287145.jpeg?auto=compress&cs=tinysrgb&w=300',
-      prompt: 'Abstract geometric patterns',
-    },
-    {
-      id: 3,
-      url: 'https://images.pexels.com/photos/1005644/pexels-photo-1005644.jpeg?auto=compress&cs=tinysrgb&w=300',
-      prompt: 'Mountain landscape with lake',
-    },
-  ];
-
-  const recentThumbnails = [
-    {
-      id: 1,
-      url: 'https://images.pexels.com/photos/1629236/pexels-photo-1629236.jpeg?auto=compress&cs=tinysrgb&w=300',
-      style: 'YouTube',
-    },
-    {
-      id: 2,
-      url: 'https://images.pexels.com/photos/1438072/pexels-photo-1438072.jpeg?auto=compress&cs=tinysrgb&w=300',
-      style: 'Gaming',
+      label: "Total Thumbnails",
+      value: stats?.noOfThumbnails || 0,
+      color: "bg-orange-100 text-orange-600",
     },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
+
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome back, {user?.name}!
           </h1>
-          <p className="text-gray-600">Here's what's happening with your content today.</p>
+          <p className="text-gray-600">
+            Here's what's happening with your content today.
+          </p>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => {
+          {statsData.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <Card key={index} className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {stat.value}
+                    </p>
                   </div>
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color}`}>
+                  <div
+                    className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color}`}
+                  >
                     <Icon size={24} />
                   </div>
                 </div>
@@ -129,81 +124,112 @@ const Dashboard = () => {
           })}
         </div>
 
+        {/* Articles + Blogs */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
           <Card>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Articles</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Recent Articles
+            </h2>
             <div className="space-y-4">
-              {recentArticles.map((article) => (
-                <div
-                  key={article.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">{article.title}</h3>
-                    <p className="text-sm text-gray-600">{article.category}</p>
+              {recentArticles.length === 0 ? (
+                <p className="text-gray-500">No recent articles</p>
+              ) : (
+                recentArticles.map((article) => (
+                  <div
+                    key={article._id}
+                    className="flex items-center justify-between p-4 bg-green-100 rounded-lg"
+                  >
+                    <div>
+                      <h3 className="font-medium text-gray-900 mb-1">
+                        {article.title}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(article.createdAt)
+                        .toISOString()
+                        .split("T")[0]}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-500">{article.date}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
 
           <Card>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Blogs</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Recent Blogs
+            </h2>
             <div className="space-y-4">
-              {recentBlogs.map((blog) => (
-                <div
-                  key={blog.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">{blog.title}</h3>
-                    <p className="text-sm text-gray-600">{blog.category}</p>
+              {recentBlogs.length === 0 ? (
+                <p className="text-gray-500">No recent blogs</p>
+              ) : (
+                recentBlogs.map((blog) => (
+                  <div
+                    key={blog._id}
+                    className="flex items-center justify-between p-4 bg-blue-100 rounded-lg"
+                  >
+                    <div>
+                      <h3 className="font-medium text-gray-900 mb-1">
+                        {blog.blogTitle}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(blog.createdAt)
+                        .toISOString()
+                        .split("T")[0]}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-500">{blog.date}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>
 
+        {/* Images + Thumbnails */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
           <Card>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Images</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Recent Images
+            </h2>
             <div className="grid grid-cols-3 gap-4">
               {recentImages.map((image) => (
-                <div key={image.id} className="relative group">
+                <div key={image._id} className="relative group">
                   <img
-                    src={image.url}
-                    alt={image.prompt}
+                    src={image.imageURL}
+                    alt={image.imagePrompt}
                     className="w-full h-24 object-cover rounded-lg"
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                    <p className="text-white text-xs text-center px-2">{image.prompt}</p>
-                  </div>
                 </div>
               ))}
             </div>
           </Card>
 
           <Card>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Thumbnails</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {recentThumbnails.map((thumb) => (
-                <div key={thumb.id} className="relative group">
-                  <img
-                    src={thumb.url}
-                    alt={thumb.style}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                    {thumb.style}
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Recent Thumbnails
+            </h2>
+            {recentThumbnails.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No recent thumbnails</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {recentThumbnails.map((thumb) => (
+                  <div key={thumb._id} className="relative group">
+                    <img
+                      src={thumb.thumbnailUrl}
+                      alt={thumb.topic}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
+
       </div>
     </DashboardLayout>
   );

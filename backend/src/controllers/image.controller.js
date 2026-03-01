@@ -10,20 +10,20 @@ import { uploadToCloudinary } from '../config/cloudinary.js'
 
 const generateImageController = async (req, res) => {
   try {
-    const { promt, style = "realistic", aspectRatio = "1:1" } = req.body;
+    const { prompt, style = "realistic", aspectRatio = "1:1" } = req.body;
 
     const userId = req.userInfo.id;
     const userName = req.userInfo.userNameFromAccessToken;
     console.log("User Info:", userId, userName);
 
-    if (!promt) {
+    if (!prompt) {
       return res.status(400).json({
         success: false,
-        message: "Promt is required"
+        message: "Prompt is required"
       })
     }
     //1.generate image using Gemini
-    const base64Image = await generateImage({ promt, style, aspectRatio });
+    const base64Image = await generateImage({ prompt, style, aspectRatio });
     //2.convert base64 to buffer
     const imageBuffer = Buffer.from(base64Image, 'base64');
     //3.upload image to cloudinary
@@ -34,7 +34,7 @@ const generateImageController = async (req, res) => {
     const newImage = await Image.create({
       userId: userId,
       userName: userName,
-      imagePrompt: promt,
+      imagePrompt: prompt,
       imageURL: cloudinaryResult.url,
       style,
       aspectRatio
@@ -148,7 +148,7 @@ const fetchUserImages = async (req, res) => {
     }
     return res.status(200).json({
       success: true,
-      articles: userImages
+      images: userImages
     })
   }
   catch (error) {

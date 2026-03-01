@@ -160,7 +160,7 @@ const updateBlog = async (req, res) => {
     }
     blog.blogTitle = title || blog.blogTitle;
     blog.blogCateogory = category || blog.blogCateogory;
-    blog.blogTags = tags.length > 0 ? tags : blogs.blogTags;
+    blog.blogTags = tags.length > 0 ? tags : blog.blogTags;
     blog.blogContent = content || blog.blogContent;
 
     const updatedBlog = await blog.save();
@@ -237,7 +237,7 @@ const fetchUserBlogs = async (req, res) => {
     }
     return res.status(200).json({
       success: true,
-      articles: userBlogs 
+      blogs: userBlogs 
     })
   }
   catch (error) {
